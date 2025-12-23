@@ -1,0 +1,1143 @@
+TURMITE LLM: An Emergent Language Model from Simple Rules
+
+Core Philosophy: Language as a Turmite Trail
+
+Instead of massive matrix multiplications, we'll build language understanding from simple turmites traversing and transforming a semantic grid. Each token becomes a colored cell, and meaning emerges from turmite interactions.
+
+---
+
+I. ARCHITECTURE OVERVIEW
+
+The Semantic Grid: A Universe of Meaning
+
+```
+Each cell = (token_id, semantic_vector[512], relation_bits[256], attention_field[64])
+Dimensions: 1024x1024 (1M cells) with toroidal wrap
+Initialization: Word embeddings placed in fractal patterns
+```
+
+Turmite Types in the LLM
+
+```
+Processing Pipeline:
+1. InputTurmites: Convert text → grid patterns
+2. AttentionTurmites: Create focus regions
+3. TransformerTurmites: Apply "rule-based attention"
+4. RelationTurmites: Build semantic connections
+5. OutputTurmites: Generate text from patterns
+```
+
+---
+
+II. COMPONENT DETAILS
+
+1. Token → Grid Encoding
+
+```rust
+struct TokenEncoderTurmite {
+    token_vocab: HashMap<String, FractalPattern>,
+    position_encoding: HilbertCurve,
+    
+    fn encode_text(&self, text: &str) -> GridPattern {
+        let tokens = tokenize(text);
+        let mut pattern = GridPattern::empty();
+        
+        // Place tokens along Hilbert curve (preserves locality)
+        for (i, token) in tokens.iter().enumerate() {
+            let (x, y) = self.position_encoding.encode(i);
+            
+            // Look up fractal pattern for this token
+            let fractal = self.token_vocab[token];
+            
+            // Embed token as fractal in grid
+            pattern.embed_fractal(x, y, fractal, depth=3);
+        }
+        
+        pattern
+    }
+}
+
+// Token fractals example:
+token "cat" = [
+    [0.2, 0.5, 0.1],  // animal cluster
+    [0.8, 0.3, 0.4],  // pet cluster  
+    [0.1, 0.9, 0.2],  // mammal cluster
+]
+
+token "king" = [
+    [0.9, 0.1, 0.2],  // royalty cluster
+    [0.5, 0.5, 0.8],  // power cluster
+    [0.3, 0.7, 0.6],  // person cluster
+]
+```
+
+2. Attention as Pheromone Gradients
+
+Instead of QKV attention, we use pheromone-following turmites:
+
+```python
+class AttentionTurmite:
+    def __init__(self, head_id: int):
+        self.head_id = head_id
+        self.position = (0, 0)
+        self.sensitivity = 0.8  # How selective it is
+        self.radius = 50        # Attention window
+        
+    def compute_attention(self, grid, focus_cell):
+        """Create attention pattern by depositing pheromone trails"""
+        
+        # Start at focus cell
+        self.position = focus_cell
+        
+        # Deposit initial pheromone
+        grid.deposit_pheromone(self.position, 'attention', strength=1.0)
+        
+        # Explore neighborhood
+        for _ in range(1000):  # Attention steps
+            # Read semantic similarity in 8 directions
+            similarities = []
+            for dir in range(8):
+                target = self.position.move(dir)
+                sim = self.semantic_similarity(
+                    grid[focus_cell].semantic_vector,
+                    grid[target].semantic_vector
+                )
+                similarities.append(sim)
+            
+            # Move toward most similar cells
+            best_dir = np.argmax(similarities)
+            if similarities[best_dir] > self.sensitivity:
+                self.position = self.position.move(best_dir)
+                # Deposit attention pheromone
+                strength = similarities[best_dir]
+                grid.deposit_pheromone(self.position, 'attention', strength)
+            else:
+                # Random exploration (like dropout)
+                self.position = self.position.move_random()
+                
+        # Return attention weights (pheromone concentrations)
+        return grid.get_pheromone_map('attention')
+    
+    def semantic_similarity(self, vec1, vec2):
+        """Cosine similarity as turmite rule"""
+        dot = np.dot(vec1, vec2)
+        norm = np.linalg.norm(vec1) * np.linalg.norm(vec2)
+        return dot / (norm + 1e-8)
+```
+
+3. Multi-Head Attention Swarm
+
+```rust
+struct MultiHeadAttention {
+    heads: Vec<AttentionTurmite>,
+    num_heads: usize,
+    
+    fn forward(&mut self, grid: &Grid, positions: &[Cell]) -> AttentionPattern {
+        let mut attention_maps = Vec::new();
+        
+        // Each head turmite explores independently
+        for head in &mut self.heads {
+            for &pos in positions {
+                let map = head.compute_attention(grid, pos);
+                attention_maps.push(map);
+            }
+        }
+        
+        // Combine head results (like pheromone mixing)
+        self.combine_attention_maps(attention_maps)
+    }
+    
+    fn combine_attention_maps(&self, maps: Vec<AttentionMap>) -> AttentionPattern {
+        // Different combination strategies:
+        
+        // 1. Average (concatenate turmite paths)
+        // 2. Max (follow strongest trail)
+        // 3. Learned mixture (turmites vote)
+        
+        let mut combined = AttentionMap::zeros();
+        
+        for map in maps {
+            // Weight by head importance (learned)
+            let weight = self.head_weights[head.id];
+            combined.add_scaled(map, weight);
+        }
+        
+        // Normalize (pheromone evaporation)
+        combined.normalize();
+        combined
+    }
+}
+```
+
+4. Transformer Layer as Turmite Colony
+
+Each transformer layer is a colony of specialized turmites:
+
+```haskell
+data TransformerLayer = TransformerLayer {
+    attention_colony :: Colony AttentionTurmite,
+    feedforward_colony :: Colony FeedForwardTurmite,
+    norm_turmites :: [NormalizationTurmite],
+    residual_turmites :: [ResidualTurmite],
+    
+    -- Communication between colonies
+    pheromone_channels :: [PheromoneChannel],
+    messenger_network :: MessengerNetwork
+}
+
+-- Forward pass as emergent behavior
+forward :: TransformerLayer -> Grid -> IO Grid
+forward layer grid = do
+    -- Phase 1: Attention turmites create focus patterns
+    attention_pattern <- runColony layer.attention_colony grid
+    
+    -- Phase 2: Apply attention (turmites modify grid)
+    let grid' = applyAttention grid attention_pattern
+    
+    -- Phase 3: Feedforward turmites transform cells
+    grid'' <- runColony layer.feedforward_colony grid'
+    
+    -- Phase 4: Normalization turmites stabilize
+    grid''' <- normalizeGrid layer.norm_turmites grid''
+    
+    -- Phase 5: Residual turmites add connections
+    final_grid <- addResidual layer.residual_turmites grid grid'''
+    
+    return final_grid
+
+-- FeedForward turmites: simple 2-layer MLP as turmite rules
+data FeedForwardTurmite = FeedForwardTurmite {
+    position :: Cell,
+    direction :: Direction,
+    
+    -- The "MLP" as turmite rules
+    expand_rule :: Rule,    // W1 expansion
+    contract_rule :: Rule,  // W2 contraction
+    activation_rule :: Rule, // ReLU/GELU
+    
+    -- Parameters stored in turmite state
+    weights :: Matrix,
+    bias :: Vector
+}
+
+instance Turmite FeedForwardTurmite where
+    step self cell = do
+        -- Read cell vector
+        let x = cell.semantic_vector
+        
+        -- Apply expansion (move to higher dimension)
+        let expanded = self.apply_rule(self.expand_rule, x)
+        
+        -- Apply activation (change direction)
+        let activated = self.apply_rule(self.activation_rule, expanded)
+        
+        -- Apply contraction (return to original dimension)
+        let output = self.apply_rule(self.contract_rule, activated)
+        
+        -- Write back to cell
+        cell.semantic_vector := output
+        
+        -- Move to next cell in pattern
+        return self { position = cell.position.neighbor(self.direction) }
+```
+
+5. Positional Encoding as Hilbert Walk
+
+Instead of sin/cos, we use space-filling curve traversal:
+
+```python
+class PositionalEncodingTurmite:
+    def __init__(self, max_length=1024, dim=512):
+        self.hilbert = HilbertCurve(order=10)  # 1024x1024 grid
+        self.directions = self.generate_hilbert_walk()
+        self.encoding_matrix = np.random.randn(dim, dim)
+        
+    def add_positional_encoding(self, grid):
+        """Walk Hilbert curve, adding positional info to cells"""
+        
+        pos = (0, 0)
+        
+        for i in range(len(self.directions)):
+            # Get next direction in Hilbert walk
+            dir = self.directions[i]
+            
+            # Move to next cell
+            pos = self.move(pos, dir)
+            
+            # Encode position as rotation of semantic vector
+            cell = grid[pos]
+            
+            # Rotate vector based on position
+            rotation = self.position_to_rotation(i)
+            encoded = self.rotate_vector(cell.semantic_vector, rotation)
+            
+            # Store in cell
+            cell.positional_vector = encoded
+            
+            # Also mark cell with position pheromone
+            grid.deposit_pheromone(pos, 'position', strength=1.0)
+            
+        return grid
+    
+    def position_to_rotation(self, pos_idx):
+        """Convert position to rotation matrix (similar to RoPE)"""
+        # Generate rotation angles that form a geometric progression
+        theta = 10000.0
+        angles = []
+        
+        for i in range(0, 512, 2):
+            angle = pos_idx / (theta ** (2 * i / 512))
+            angles.append(angle)
+            
+        # Build rotation matrix from angles
+        rotation = np.eye(512)
+        for i in range(0, 512, 2):
+            cos_a = np.cos(angles[i//2])
+            sin_a = np.sin(angles[i//2])
+            
+            rotation[i, i] = cos_a
+            rotation[i, i+1] = -sin_a
+            rotation[i+1, i] = sin_a
+            rotation[i+1, i+1] = cos_a
+            
+        return rotation
+```
+
+6. Embedding Layer: Token → Fractal Mapping
+
+```rust
+struct EmbeddingTurmite {
+    // Each token maps to a unique fractal generator
+    token_fractals: HashMap<u32, FractalGenerator>,
+    
+    // Fractal parameters become embedding vectors
+    fractal_dim: usize = 512,
+    
+    fn embed_token(&self, token_id: u32) -> FractalPattern {
+        let generator = self.token_fractals[&token_id];
+        
+        // Generate fractal with token-specific parameters
+        let fractal = generator.generate(
+            depth=3,           // How deep to expand
+            variance=0.1,      // Token uniqueness
+            symmetry=0.7       // Semantic regularity
+        );
+        
+        // Convert fractal to embedding vector
+        let embedding = self.fractal_to_vector(fractal);
+        
+        embedding
+    }
+    
+    fn fractal_to_vector(&self, fractal: FractalPattern) -> Vector {
+        // Extract features from fractal:
+        // 1. Hausdorff dimension (complexity)
+        // 2. Symmetry groups
+        // 3. Color distribution
+        // 4. Boundary complexity
+        
+        let mut vector = Vector::zeros(self.fractal_dim);
+        
+        // First 128: statistical moments
+        vector[0..128] = fractal.statistical_moments();
+        
+        // Next 128: symmetry features
+        vector[128..256] = fractal.symmetry_groups();
+        
+        // Next 128: topological features
+        vector[256..384] = fractal.topological_invariants();
+        
+        // Last 128: semantic clusters (learned)
+        vector[384..512] = self.project_to_semantic_space(fractal);
+        
+        vector
+    }
+}
+```
+
+---
+
+III. TRAINING MECHANISMS
+
+1. Backpropagation as Reverse Turmite Trails
+
+Instead of gradient descent, we trace turmite paths backward:
+
+```python
+class TurmiteBackprop:
+    def compute_gradients(self, grid_history, loss):
+        """Backprop by following turmite trails in reverse"""
+        
+        gradients = {}
+        
+        # Start from final grid state
+        current_grid = grid_history[-1]
+        
+        # Reverse through time
+        for t in reversed(range(len(grid_history) - 1)):
+            prev_grid = grid_history[t]
+            
+            # Find which turmites modified each cell
+            modified_cells = self.find_modified_cells(prev_grid, current_grid)
+            
+            for cell_pos in modified_cells:
+                # Find turmites that visited this cell at time t
+                turmites = self.find_turmites_at(cell_pos, t)
+                
+                for turmite in turmites:
+                    # Compute gradient through turmite's rule
+                    grad = self.compute_rule_gradient(
+                        turmite, 
+                        prev_grid[cell_pos],
+                        current_grid[cell_pos],
+                        loss
+                    )
+                    
+                    # Accumulate gradient for this turmite's parameters
+                    gradients[turmite.id] = gradients.get(turmite.id, 0) + grad
+            
+            # Move to previous timestep
+            current_grid = prev_grid
+        
+        return gradients
+    
+    def update_parameters(self, gradients, learning_rate):
+        """Update turmite rules based on gradients"""
+        
+        for turmite_id, grad in gradients.items():
+            turmite = self.get_turmite(turmite_id)
+            
+            # Gradient descent on rule parameters
+            new_rules = self.apply_gradient_to_rules(turmite.rules, grad, learning_rate)
+            
+            # Mutate turmite rules (with momentum)
+            turmite.rules = self.mutate_rules(new_rules, momentum=0.9)
+            
+            # Also evolve turmite behavior (genetic algorithm)
+            if random() < 0.01:  # 1% mutation rate
+                turmite.mutate_behavior()
+```
+
+2. Loss Functions as Grid Discrepancy
+
+```rust
+struct LossTurmite {
+    loss_type: LossType,
+    
+    fn compute_loss(&self, predicted_grid: &Grid, target_grid: &Grid) -> f32 {
+        match self.loss_type {
+            LossType::CrossEntropy => {
+                // Compare token distributions in grids
+                self.cross_entropy_loss(predicted_grid, target_grid)
+            }
+            LossType::MeanSquared => {
+                // Compare semantic vector distances
+                self.mse_loss(predicted_grid, target_grid)
+            }
+            LossType::Contrastive => {
+                // Push apart unrelated cells, pull together related ones
+                self.contrastive_loss(predicted_grid, target_grid)
+            }
+            LossType::TrailConsistency => {
+                // Check if turmite trails form coherent patterns
+                self.trail_consistency_loss(predicted_grid)
+            }
+        }
+    }
+    
+    fn cross_entropy_loss(&self, pred: &Grid, target: &Grid) -> f32 {
+        let mut loss = 0.0;
+        
+        // Compare each cell's token probability distribution
+        for x in 0..GRID_SIZE {
+            for y in 0..GRID_SIZE {
+                let p_dist = pred[(x, y)].token_distribution();
+                let t_dist = target[(x, y)].token_distribution();
+                
+                // Cross-entropy
+                for (token, &p) in p_dist.iter() {
+                    let t = t_dist.get(token).unwrap_or(&0.0);
+                    loss += -t * (p + 1e-8).ln();
+                }
+            }
+        }
+        
+        loss / (GRID_SIZE * GRID_SIZE) as f32
+    }
+    
+    fn trail_consistency_loss(&self, grid: &Grid) -> f32 {
+        // Loss based on how well turmite trails form meaningful patterns
+        
+        let mut inconsistency = 0.0;
+        
+        // Check trail properties:
+        // 1. Trails should be continuous
+        // 2. Trails should have consistent direction changes
+        // 3. Related concepts should have connected trails
+        
+        let trails = grid.extract_trails();
+        
+        for trail in trails {
+            // Measure smoothness of trail
+            let smoothness = trail.compute_smoothness();
+            inconsistency += 1.0 - smoothness;
+            
+            // Measure semantic coherence along trail
+            let coherence = trail.compute_semantic_coherence();
+            inconsistency += 1.0 - coherence;
+            
+            // Measure information content (should be high)
+            let info_content = trail.compute_information_content();
+            inconsistency += 1.0 / (info_content + 1.0);
+        }
+        
+        inconsistency
+    }
+}
+```
+
+3. Evolutionary Training with Turmite Reproduction
+
+```python
+class EvolutionaryTrainer:
+    def __init__(self, population_size=100):
+        self.population = [self.random_turmite_llm() for _ in range(population_size)]
+        self.generation = 0
+        
+    def train_generation(self, training_data):
+        # Evaluate fitness of each turmite LLM
+        fitness_scores = []
+        for turmite_llm in self.population:
+            score = self.evaluate_fitness(turmite_llm, training_data)
+            fitness_scores.append((turmite_llm, score))
+        
+        # Sort by fitness
+        fitness_scores.sort(key=lambda x: x[1], reverse=True)
+        
+        # Select top performers
+        top_performers = [t for t, _ in fitness_scores[:20]]
+        
+        # Create next generation
+        next_generation = []
+        
+        # Keep top performers
+        next_generation.extend(top_performers)
+        
+        # Crossover between top performers
+        for i in range(40):
+            parent1 = random.choice(top_performers)
+            parent2 = random.choice(top_performers)
+            child = self.crossover(parent1, parent2)
+            next_generation.append(child)
+        
+        # Mutate some children
+        for i in range(40):
+            turmite_llm = next_generation[20 + i]
+            if random.random() < 0.3:
+                self.mutate(turmite_llm)
+        
+        self.population = next_generation
+        self.generation += 1
+    
+    def crossover(self, parent1, parent2):
+        """Combine turmite colonies from two parents"""
+        child = TurmiteLLM()
+        
+        # Mix attention turmites
+        child.attention_colony = self.mix_colonies(
+            parent1.attention_colony,
+            parent2.attention_colony
+        )
+        
+        # Mix feedforward turmites
+        child.feedforward_colony = self.mix_colonies(
+            parent1.feedforward_colony,
+            parent2.feedforward_colony
+        )
+        
+        # Inherit vocabulary fractals
+        child.token_fractals = self.combine_vocabularies(
+            parent1.token_fractals,
+            parent2.token_fractals
+        )
+        
+        return child
+    
+    def mutate(self, turmite_llm):
+        """Random mutations to improve performance"""
+        
+        # Mutate some turmite rules
+        for turmite in turmite_llm.all_turmites():
+            if random.random() < 0.01:  # 1% mutation rate
+                self.mutate_turmite_rule(turmite)
+        
+        # Mutate fractal embeddings
+        for token_id in turmite_llm.token_fractals.keys():
+            if random.random() < 0.005:  # 0.5% mutation rate
+                fractal = turmite_llm.token_fractals[token_id]
+                self.mutate_fractal(fractal)
+```
+
+---
+
+IV. SPECIALIZED TURMITES FOR LLM TASKS
+
+1. Reasoning Turmites (Chain of Thought)
+
+```rust
+struct ReasoningTurmite {
+    reasoning_type: ReasoningType,
+    scratch_space: GridRegion,
+    inference_rules: Vec<InferenceRule>,
+    
+    fn solve_problem(&mut self, problem: &str, grid: &mut Grid) -> String {
+        // Phase 1: Parse problem
+        let parsed = self.parse_problem(problem);
+        
+        // Phase 2: Explore solution space
+        let solutions = self.explore_solutions(parsed, grid);
+        
+        // Phase 3: Verify solutions
+        let verified = self.verify_solutions(solutions);
+        
+        // Phase 4: Generate explanation trail
+        let explanation = self.generate_explanation_trail(verified);
+        
+        explanation
+    }
+    
+    fn explore_solutions(&self, problem: Problem, grid: &Grid) -> Vec<Solution> {
+        // Use different exploration strategies:
+        
+        match self.reasoning_type {
+            ReasoningType::Deductive => {
+                // Follow logical deduction trails
+                self.deductive_exploration(problem, grid)
+            }
+            ReasoningType::Inductive => {
+                // Look for patterns and generalize
+                self.inductive_exploration(problem, grid)
+            }
+            ReasoningType::Abductive => {
+                // Find best explanation
+                self.abductive_exploration(problem, grid)
+            }
+            ReasoningType::Analogical => {
+                // Find analogies in grid
+                self.analogical_exploration(problem, grid)
+            }
+        }
+    }
+    
+    fn deductive_exploration(&self, problem: Problem, grid: &Grid) -> Vec<Solution> {
+        // Start from premises
+        let mut solutions = vec![];
+        let mut frontier = vec![problem.premises];
+        
+        while !frontier.is_empty() {
+            let current = frontier.pop().unwrap();
+            
+            // Apply inference rules
+            for rule in &self.inference_rules {
+                if rule.applies_to(current) {
+                    let next = rule.apply(current);
+                    
+                    // Check if we reached a conclusion
+                    if next.contains(&problem.goal) {
+                        solutions.push(Solution::new(current, rule.clone()));
+                    }
+                    
+                    frontier.push(next);
+                }
+            }
+        }
+        
+        solutions
+    }
+}
+```
+
+2. Memory Turmites (KV Cache)
+
+Instead of key-value cache, we have memory turmites that maintain trails:
+
+```python
+class MemoryTurmite:
+    def __init__(self, capacity=10000):
+        self.memory_trails = []  # List of important trails
+        self.relevance_network = RelevanceNetwork()
+        self.retrieval_strategy = "similarity_search"
+        
+    def store(self, grid_pattern: GridPattern, importance: float):
+        """Store a pattern as a turmite trail"""
+        
+        # Extract the trail that was just formed
+        trail = grid_pattern.extract_active_trail()
+        
+        # Compress trail
+        compressed = self.compress_trail(trail)
+        
+        # Add to memory with importance weight
+        self.memory_trails.append({
+            'trail': compressed,
+            'importance': importance,
+            'timestamp': time.time(),
+            'access_count': 0
+        })
+        
+        # If over capacity, forget least important
+        if len(self.memory_trails) > self.capacity:
+            self.forget_least_important()
+    
+    def retrieve(self, query: GridPattern, k=5):
+        """Retrieve relevant memories"""
+        
+        # Extract query trail
+        query_trail = query.extract_active_trail()
+        
+        # Find similar trails in memory
+        similarities = []
+        for i, memory in enumerate(self.memory_trails):
+            sim = self.trail_similarity(query_trail, memory['trail'])
+            # Weight by importance and recency
+            score = sim * memory['importance'] * self.recency_weight(memory['timestamp'])
+            similarities.append((score, i))
+        
+        # Get top-k
+        similarities.sort(reverse=True)
+        top_k = similarities[:k]
+        
+        # Return retrieved memories
+        retrieved = []
+        for score, idx in top_k:
+            memory = self.memory_trails[idx]
+            memory['access_count'] += 1
+            retrieved.append(memory['trail'])
+        
+        return retrieved
+    
+    def trail_similarity(self, trail1, trail2):
+        """Compute similarity between two turmite trails"""
+        
+        # Multiple similarity measures:
+        
+        # 1. Geometric similarity (shape of trail)
+        geo_sim = self.hausdorff_distance(trail1, trail2)
+        
+        # 2. Semantic similarity (content along trail)
+        sem_sim = self.semantic_correlation(trail1, trail2)
+        
+        # 3. Temporal similarity (timing patterns)
+        temp_sim = self.temporal_correlation(trail1, trail2)
+        
+        # Combined similarity
+        similarity = 0.4 * geo_sim + 0.4 * sem_sim + 0.2 * temp_sim
+        
+        return similarity
+```
+
+3. Generation Turmites (Autoregressive)
+
+```rust
+struct GenerationTurmite {
+    temperature: f32,
+    top_p: f32,
+    max_length: usize,
+    sampling_strategy: SamplingStrategy,
+    
+    fn generate(&mut self, prompt: &str, grid: &mut Grid, num_tokens: usize) -> String {
+        let mut output_tokens = vec![];
+        
+        // Encode prompt
+        let prompt_pattern = self.encode_prompt(prompt, grid);
+        
+        // Initial position in grid
+        let mut current_pos = prompt_pattern.end_position();
+        
+        for _ in 0..num_tokens {
+            // Get context from surrounding cells
+            let context = self.get_context(grid, current_pos, radius=10);
+            
+            // Predict next token distribution
+            let distribution = self.predict_next_token(context, grid);
+            
+            // Sample from distribution
+            let next_token = self.sample_from_distribution(
+                distribution, 
+                self.temperature, 
+                self.top_p
+            );
+            
+            // Write token to grid
+            self.write_token_to_grid(next_token, grid, current_pos);
+            
+            // Move to next position
+            current_pos = self.advance_position(current_pos, grid);
+            
+            // Add to output
+            output_tokens.push(next_token);
+            
+            // Early stopping if end token
+            if next_token == END_TOKEN {
+                break;
+            }
+        }
+        
+        // Decode tokens to string
+        self.decode_tokens(output_tokens)
+    }
+    
+    fn predict_next_token(&self, context: Context, grid: &Grid) -> TokenDistribution {
+        // Use attention turmites to focus on relevant parts
+        let attention = self.attention_turmites.compute_attention(grid, context.focus);
+        
+        // Use feedforward turmites to process
+        let processed = self.feedforward_turmites.process(context, attention);
+        
+        // Use output turmites to generate distribution
+        let distribution = self.output_turmites.generate_distribution(processed);
+        
+        // Apply constraints (grammar, facts, etc.)
+        let constrained = self.apply_constraints(distribution, context);
+        
+        constrained
+    }
+    
+    fn sample_from_distribution(&self, dist: TokenDistribution, temp: f32, top_p: f32) -> u32 {
+        match self.sampling_strategy {
+            SamplingStrategy::Greedy => {
+                // Take highest probability
+                dist.argmax()
+            }
+            SamplingStrategy::Temperature => {
+                // Adjust with temperature
+                let adjusted = self.apply_temperature(dist, temp);
+                adjusted.sample()
+            }
+            SamplingStrategy::TopP => {
+                // Nucleus sampling
+                let nucleus = self.nucleus_sampling(dist, top_p);
+                nucleus.sample()
+            }
+            SamplingStrategy::BeamSearch => {
+                // Beam search over multiple paths
+                self.beam_search(dist, beam_width=5)
+            }
+        }
+    }
+}
+```
+
+4. Specialized Turmites for Different Tasks
+
+```python
+# Code generation turmite
+class CodeGenTurmite:
+    def generate_code(self, spec: str) -> str:
+        # Parse specification into AST pattern
+        ast_pattern = self.parse_to_ast(spec)
+        
+        # Map AST pattern to grid
+        grid_pattern = self.ast_to_grid(ast_pattern)
+        
+        # Use syntax-aware turmites
+        syntax_turmites = [
+            IndentationTurmite(),
+            BracketMatchingTurmite(),
+            TypeInferenceTurmite(),
+            ImportResolutionTurmite()
+        ]
+        
+        # Generate code by turmite colony
+        code_grid = self.run_colony(syntax_turmites, grid_pattern)
+        
+        # Convert grid back to code
+        code = self.grid_to_code(code_grid)
+        
+        return code
+
+# Math reasoning turmite
+class MathTurmite:
+    def solve_equation(self, equation: str) -> str:
+        # Parse equation into symbolic pattern
+        symbolic_grid = self.parse_equation(equation)
+        
+        # Apply algebraic transformation turmites
+        transform_turmites = [
+            DistributiveTurmite(),
+            CommutativeTurmite(),
+            AssociativeTurmite(),
+            InverseOperationTurmite(),
+            FactorizationTurmite(),
+            ExpansionTurmite()
+        ]
+        
+        # Solve step by step
+        solution_trail = []
+        current_grid = symbolic_grid
+        
+        for _ in range(100):  # Max steps
+            # Try all transformations
+            for turmite in transform_turmites:
+                new_grid = turmite.apply(current_grid)
+                
+                if self.is_simpler(new_grid, current_grid):
+                    solution_trail.append(turmite.name)
+                    current_grid = new_grid
+                    break
+            
+            # Check if solved
+            if self.is_solved(current_grid):
+                break
+        
+        # Generate step-by-step explanation
+        explanation = self.generate_explanation(solution_trail, current_grid)
+        
+        return explanation
+```
+
+---
+
+V. ADVANCED FEATURES
+
+1. Mixture of Experts as Turmite Species
+
+```rust
+struct MixtureOfExperts {
+    experts: Vec<ExpertTurmite>,
+    router: RouterTurmite,
+    gating_network: GatingNetwork,
+    
+    fn forward(&self, input: Grid) -> Grid {
+        // Router decides which experts to use
+        let expert_weights = self.router.route(input);
+        
+        // Activate top-k experts
+        let (top_k_indices, top_k_weights) = self.select_top_k(expert_weights, k=2);
+        
+        // Run each expert
+        let mut expert_outputs = Vec::new();
+        for &idx in &top_k_indices {
+            let expert = &self.experts[idx];
+            let output = expert.process(input);
+            expert_outputs.push(output);
+        }
+        
+        // Combine weighted outputs
+        let combined = self.combine_outputs(expert_outputs, top_k_weights);
+        
+        combined
+    }
+}
+
+struct ExpertTurmite {
+    specialty: ExpertSpecialty,
+    parameters: Matrix,
+    
+    fn process(&self, input: Grid) -> Grid {
+        match self.specialty {
+            ExpertSpecialty::Mathematics => {
+                // Math-specific transformations
+                self.math_transform(input)
+            }
+            ExpertSpecialty::Language => {
+                // Language-specific processing
+                self.language_transform(input)
+            }
+            ExpertSpecialty::Logic => {
+                // Logical reasoning
+                self.logic_transform(input)
+            }
+            ExpertSpecialty::Spatial => {
+                // Spatial reasoning
+                self.spatial_transform(input)
+            }
+            // ... other specialties
+        }
+    }
+}
+```
+
+2. Hierarchical Processing with Grid Pyramids
+
+```python
+class HierarchicalTurmiteLLM:
+    def __init__(self, levels=3):
+        # Each level works at different spatial scales
+        self.levels = [
+            Level(scale=1,   grid_size=1024, turmite_size=1),   # Fine detail
+            Level(scale=4,   grid_size=256,  turmite_size=4),   # Medium
+            Level(scale=16,  grid_size=64,   turmite_size=16),  # Coarse
+        ]
+        
+        # Bridges between levels
+        self.downsample_turmites = DownsampleTurmites()
+        self.upsample_turmites = UpsampleTurmites()
+        
+    def process(self, input_grid):
+        # Bottom-up processing
+        activations = []
+        current = input_grid
+        
+        for level in self.levels:
+            # Process at this scale
+            processed = level.process(current)
+            activations.append(processed)
+            
+            # Downsample for next level
+            if level != self.levels[-1]:
+                current = self.downsample_turmites.apply(processed)
+        
+        # Top-down refinement
+        refined = activations[-1]
+        
+        for i in reversed(range(len(self.levels) - 1)):
+            # Upsample and combine
+            upsampled = self.upsample_turmites.apply(refined)
+            refined = self.combine_levels(upsampled, activations[i])
+            
+            # Optional: reprocess at this level
+            refined = self.levels[i].refine(refined)
+        
+        return refined
+```
+
+3. Sparse Activation with Trail Pruning
+
+```rust
+struct SparseActivationTurmite {
+    sparsity_target: f32,  # e.g., 0.1 for 10% active
+    importance_threshold: f32,
+    
+    fn sparsify_grid(&self, grid: &mut Grid) {
+        // Measure importance of each cell
+        let importances = self.compute_importance(grid);
+        
+        // Keep only top-k important cells active
+        let threshold = self.find_threshold(importances, self.sparsity_target);
+        
+        // Deactivate unimportant cells
+        for x in 0..GRID_SIZE {
+            for y in 0..GRID_SIZE {
+                if importances[(x, y)] < threshold {
+                    grid.deactivate_cell((x, y));
+                }
+            }
+        }
+    }
+    
+    fn compute_importance(&self, grid: &Grid) -> ImportanceMap {
+        // Importance based on:
+        // 1. Recent activity
+        // 2. Connection to other important cells
+        // 3. Information content
+        // 4. Role in current computation
+        
+        let mut importance = ImportanceMap::zeros();
+        
+        for x in 0..GRID_SIZE {
+            for y in 0..GRID_SIZE {
+                let cell = grid[(x, y)];
+                
+                // Base importance from activation
+                let base = cell.activation_level();
+                
+                // Importance from connections
+                let connection_importance = self.connection_importance(cell, grid);
+                
+                // Importance from information content
+                let info_importance = self.information_content(cell);
+                
+                // Combined importance
+                importance[(x, y)] = 0.4 * base + 0.3 * connection_importance + 0.3 * info_importance;
+            }
+        }
+        
+        importance
+    }
+}
+```
+
+---
+
+VI. IMPLEMENTATION ROADMAP
+
+Phase 1: Core Engine (2-3 months)
+
+1. Grid engine: Sparse grid with toroidal topology
+2. Turmite VM: Rule interpreter for turmite execution
+3. Basic turmites: Movement, reading, writing
+4. Visualization: See turmites moving on grid
+
+Phase 2: Language Components (3-4 months)
+
+1. Token embeddings: Fractal-based embedding system
+2. Attention turmites: Pheromone-based attention mechanism
+3. Feedforward turmites: MLP as turmite rules
+4. Training loop: Evolutionary training framework
+
+Phase 3: Advanced Features (3-4 months)
+
+1. Hierarchical processing: Multi-scale grids
+2. Sparse activation: Efficient computation
+3. Specialized turmites: Reasoning, coding, math
+4. Memory system: Long-term trail storage
+
+Phase 4: Optimization (2-3 months)
+
+1. GPU acceleration: Parallel turmite execution
+2. Rule compilation: JIT compilation of turmite rules
+3. Distributed processing: Multiple grids, turmite migration
+4. Quantization: Efficient storage of grid states
+
+---
+
+VII. POTENTIAL ADVANTAGES
+
+1. Interpretability: Every decision is traceable as a turmite trail
+2. Efficiency: Sparse activation, only compute where needed
+3. Continual learning: Turmites can evolve over time
+4. Multimodal: Same architecture works for text, images, etc.
+5. Robustness: Distributed representation, no single point of failure
+6. Creativity: Emergent behavior from simple rules
+
+VIII. CHALLENGES & SOLUTIONS
+
+Challenge: Training stability with emergent behavior
+Solution: Gradual complexity increase, curriculum learning
+
+Challenge: Scaling to billions of parameters
+Solution: Sparse expert turmites, hierarchical processing
+
+Challenge: Slow inference (sequential turmite steps)
+Solution: Parallel turmite colonies, JIT compilation
+
+Challenge: Mathematical rigor (attention approximation)
+Solution: Prove convergence properties, formal verification
+
+---
+
+IX. RESEARCH QUESTIONS
+
+1. Universal approximation: Can turmite colonies approximate any function?
+2. Attention equivalence: Is pheromone attention as powerful as softmax attention?
+3. Emergent reasoning: Can complex reasoning emerge from simple turmite rules?
+4. Scaling laws: What are the scaling laws for turmite LLMs?
+5. Consciousness: At what scale do turmite colonies become "aware"?
+
+---
+
+CONCLUSION
+
+TURMITE LLM reimagines language modeling from first principles:
+
+· Instead of matrix multiplication: Turmite movement
+· Instead of attention weights: Pheromone gradients
+· Instead of embeddings: Fractal patterns
+· Instead of training: Evolution and emergence
+
+This approach could lead to more interpretable, efficient, and creative language models that learn through exploration rather than gradient descent. The grid becomes a shared workspace where meaning emerges from the dance of simple agents.
+
+The beauty is that complex language understanding emerges from trivial turmite rules, just as complex ant colonies emerge from simple individual behaviors.
+
+We're not just building an LLM—we're creating a computational ecosystem where language naturally emerges from agent interactions.
